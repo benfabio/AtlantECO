@@ -1,5 +1,5 @@
 
-##### ATLANTECO SCRIPT 1.2 ----------------------------------------------------------------------------------------------------------------------------
+##### ATLANTECO SCRIPT 1.2.2 ----------------------------------------------------------------------------------------------------------------------------
 ##### 29/04/2021: R Script to format MALASPINA occurrence datasets following the ATLANTECO WP2 template © Fabio Benedetti, ETH Zürich, IBP, UP Group.
 
 #   - Read MALASPINA species occurrence dataset found on PANGAEA (data from Villarino et al., 2017, Nat Comms)
