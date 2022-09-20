@@ -123,6 +123,7 @@ m.zoo$VolFiltered <- ((m.zoo$Segment_Length)*1.49)/5
 #summary(m.zoo$VolFiltered)
 # Use that to convert Counts to Abund in #/m3
 m.zoo$Abund <- m.zoo$Count/m.zoo$VolFiltered
+summary(m.zoo$Count) ; unique(m.zoo$Count)
 summary(m.zoo$Abund)
 
 ### Format to WP2 standards
@@ -422,6 +423,36 @@ which(rowSums(is.na(ddf)) == ncol(ddf)) # should return 'integer(0)'
 
 save(ddf, file = "SO-CPR_reformatted+WoRMScheck_17_10_21.Rdata")
 write.table(ddf, file = "SO-CPR_reformatted+WoRMScheck_17_10_21.txt", sep = "\t")
+
+### Check distrbution of Pteropoda counts data
+so.data <- get(load("SO-CPR_reformatted+WoRMScheck_17_10_21.Rdata"))
+# unique(so.data$Order)
+so.data <- so.data[so.data$Order == "Pteropoda" & !is.na(so.data$Order),]
+unique(so.data$ScientificName)
+head(so.data)
+
+### Check distrbution of data 
+summary(so.data$MeasurementValue) ; unique(so.data$MeasurementValue)
+ggplot(so.data, aes(x = log1p(MeasurementValue))) + geom_histogram(binwidth = .1, colour="black", fill="white") +
+    xlab("Pteropoda counts") + ylab("Count - raw data - SO")
+
+### Compute monthly clims
+so.data$x <- round(so.data$decimalLongitude, .1)
+so.data$y <- round(so.data$decimalLatitude, .1)
+unique(so.data$x)
+unique(so.data$y)
+so.data$id <- factor(paste(so.data$x, so.data$y, so.data$Month, sep = "_"))
+# Derive monthly clims
+clims <- data.frame(so.data %>% group_by(id) %>% 
+    summarize(x = unique(x), y = unique(y), month = unique(Month), Nevents = length(unique(EventID)), sum = sum(MeasurementValue), mean = sum/Nevents ) 
+)
+
+summary(clims)
+
+unique(clims$mean)
+
+ggplot(clims, aes(x = log1p(mean))) + geom_histogram(binwidth = .1, colour="black", fill="white") +
+    xlab("Euthecosomata counts (log(x+1))") + ylab("Count - monthly climatologies") + facet_wrap(.~ factor(month), ncol = 4)
 
 
 ### ------------------------------------------------------------------------------------------------------------------------------------------------------

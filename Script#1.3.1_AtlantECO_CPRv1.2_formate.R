@@ -8,7 +8,7 @@
 #   - Remove occurrences not at genus of species level (can be done at same time as above)
 #   - Re-format to AtlantECO WP2 template: zoo first and then phytoplankton
 
-### Latest update: 26/10/2021
+### Latest update: 30/11/2021
 
 library("marmap")
 library("tidyverse")
@@ -32,6 +32,7 @@ occ <- read.table("occurrence.txt", sep = "\t", dec = ".", h = T)
 dim(occ)
 head(occ)
 summary(occ)
+unique(occ$individualCount)
 # unique(occ$occurrenceStatus) # 'present' only...but then what about individualCount?
 length(unique(occ$scientificName))
 unique(occ$scientificName)
@@ -46,6 +47,7 @@ event <- read.table("event.txt", sep = "\t", dec = ".", h = T)
 dim(event)
 head(event)
 summary(event)
+unique(event$sampleSizeValue)
 
 meta <- read.table("extendedmeasurementorfact.txt", sep = "\t", dec = ".", h = T)
 dim(meta)
@@ -99,7 +101,29 @@ rm(res) ; gc()
 # Quickly save
 save(cpr.merged, file = "dwca_CPRv1.2_occ+event_27_04_2021.Rdata")
 ### For extendedmeasurementorfact.txt, ask the CPR guys
-
+#
+# ### 22/06/2022: Checking data for le S. Ramondenc
+# cpr <- get(load("dwca_CPRv1.2_occ+event_27_04_2021.Rdata"))
+# dim(cpr)
+# str(cpr)
+# # Check what wa caught between May & July 2013 in the following bounding box:
+# cpr$Date <- do.call(rbind, strsplit(x = cpr$eventDate, split = "T"))[,1]
+# #head( lubridate::ymd(cpr$Date) ) # str( lubridate::dmy(m.cpr$Date) ) # Good. Extract Day
+# cpr$Date <- lubridate::ymd(cpr$Date)
+# cpr$Day <- lubridate::day(cpr$Date)
+# cpr$Month <- lubridate::month(cpr$Date)
+# cpr$Year <- lubridate::year(cpr$Date)
+# subset <- cpr[cpr$Year == 2013,]
+# subset <- subset[subset$Month >= 5,]
+# subset <- subset[subset$Month <= 7,]
+# subset <- subset[subset$Month <= 7,]
+# subset <- subset[subset$decimalLongitude >= -18,]
+# subset <- subset[subset$decimalLongitude <= -15,]
+# subset <- subset[subset$decimalLatitude >= 47,]
+# subset <- subset[subset$decimalLatitude <= 50,]
+# dim(subset)
+#
+# write.table(subset, "subset_4leS_dwca_CPRv1.2_occ+event_27_04_2021.txt", sep = "\t")
 
 ### 2°) Split into phyto vs. zoo
 names <- unique(cpr.merged$scientificName)
@@ -321,7 +345,24 @@ which(rowSums(is.na(ddf)) == ncol(ddf)) # should return 'integer(0)'
 save(ddf, file = "CPR_zooplankton_reformatted+WoRMScheck_29_10_21.Rdata")
 write.table(ddf, file = "CPR_zooplankton_reformatted+WoRMScheck_29_10_21.txt", sep = "\t")
 
+### 30/11/21: Following David Johns' email, correct the unknown LifeForm codes based on the BODC parameter semantics 
+# https://vocab.seadatanet.org/v_bodc_vocab_v2/browse.asp?order=conceptid&formname=search&screen=0&lib=s11&v0_0=S114&v1_0=conceptid%2Cpreflabel%2Caltlabel%2Cdefinition%2Cmodified&v2_0=0&v0_1=&v1_1=conceptid&v2_1=3&v0_2=&v1_2=preflabel&v2_2=3&v0_3=&v1_3=altlabel&v2_3=3&v0_4=&v1_4=modified&v2_4=9&v0_5=&v1_5=modified&v2_5=10&x=34&y=24&v1_6=&v2_6=&v1_7=&v2_7 
 
+setwd("/net/kryo/work/fabioben/AtlantECO/AtlantECO_BASE/Traditional/CPR/dwca-cpr_public-v1.2")
+dir()
+
+cpr <- get(load("CPR_zooplankton_reformatted+WoRMScheck_29_10_21.Rdata"))
+dim(cpr)
+unique(cpr$LifeForm)  # str(cpr$LifeForm)
+# - S114 == copepodites C1-C4
+# - S1116 == adult
+cpr[cpr$LifeForm == "S114" & !is.na(cpr$LifeForm),"LifeForm"] <- "copepodites C1-C4"
+cpr[cpr$LifeForm == "S1116" & !is.na(cpr$LifeForm),"LifeForm"] <- "adult"
+# Save again 
+save(cpr, file = "CPR_zooplankton_reformatted+WoRMScheck_29_10_21.Rdata")
+write.table(cpr, file = "CPR_zooplankton_reformatted+WoRMScheck_29_10_21.txt", sep = "\t")
+
+### No need for phytoplankton though
 
 ### ----------------------------------------------------------------------------------------------------------------------------
 
@@ -480,8 +521,9 @@ unique(ddf$WoRMS_status) # good
 
 ### Counts were ACTUALLY in 3/m3, not #/m3 (pers. comm. David Johns). Need to divide by 3
 summary(ddf$MeasurementValue) ; unique(ddf$MeasurementValue)
-ddf$MeasurementValue <- (ddf$MeasurementValue)/3 ; summary(ddf$MeasurementValue)
-unique(ddf$MeasurementValue)
+ddf$MeasurementValue <- (ddf$MeasurementValue)/3
+# summary(ddf$MeasurementValue)
+# unique(ddf$MeasurementValue)
 
 
 ### Last, make a map of sampling effort in space and then maybe a Hövmoller plot
@@ -510,7 +552,6 @@ which(rowSums(is.na(ddf)) == ncol(ddf)) # should return 'integer(0)'
 
 save(ddf, file = "CPR_phytoplankton_reformatted+WoRMScheck_29_10_21.Rdata")
 write.table(ddf, file = "CPR_phytoplankton_reformatted+WoRMScheck_29_10_21.txt", sep = "\t")
-
 
 
 ### ----------------------------------------------------------------------------------------------------------------------------

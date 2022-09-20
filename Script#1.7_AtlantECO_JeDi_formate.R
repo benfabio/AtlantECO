@@ -7,7 +7,7 @@
 #  - Re-format to AtlantECO WP2 template
 #  - Retrieve AphiaID from WoRMS --> Script#1.5
 
-### Latest update: 18/06/2021
+### Latest update: 03/12/2021
 
 library("raster")
 library("rgeos")
@@ -164,9 +164,10 @@ table <- data.frame(project_title = ncvar_get(nc,"project_title"), sub_project_t
         CPUE = ncvar_get(nc,"catch_per_effort"), Note = ncvar_get(nc,"accompanying_ancillary_data")
 ) # eo data.frame  
 # Check
-colnames(table) ; dim(table)
+colnames(table) ; dim(table) # 429'462
 str(table)
 summary(table)
+summary(table$WetWeight)
 # head(table)
 
 ### Correct some str: 
@@ -237,7 +238,17 @@ table$ScientificName <- trimws(table$ScientificName, which = c("right"))
 table$OrigScientificName <- table$ScientificName 
 table[10000:10500,]
 
-head( table[!is.na(table$WetWeight),] )
+unique( table[!is.na(table$WetWeight),"WetWeight"] )
+dim(table[!is.na(table$WetWeight) & table$WetWeight != "",]) # 660 only
+
+ggplot() + geom_polygon(aes(x = long, y = lat, group = group),
+        data = world[world$long <= 180,], fill = "grey85", colour = "black", size = 0.3) +
+    geom_point(aes(x = decimalLongitude, y = decimalLatitude),
+        data = table[!is.na(table$WetWeight) & table$WetWeight != "",], alpha = 0.75) +
+    coord_quickmap() + ylab("Latitude (°N)") + xlab("Longitude (°W)") +
+    theme(panel.background = element_rect(fill = "white"),legend.key = element_rect(fill = "grey50"),
+        panel.grid.major = element_line(colour = "white",linetype = "dashed"), legend.position = "right") 
+
 
 # OK, save this table as temporary file before re-formatting to AtlantECO WP2 template
 save(table, file = "JeDi_Lucas&al._2014_temporary_to_rfrmt_17_06_2021.Rdata")
@@ -250,12 +261,20 @@ setwd("/net/kryo/work/fabioben/AtlantECO/AtlantECO_BASE/Traditional/JeDI_jellyfi
 table <- get(load("JeDi_Lucas&al._2014_temporary_to_rfrmt_17_06_2021.Rdata"))
 dim(table) ; head(table)
 str(table)
+dim(table[!is.na(table$WetWeight),c("IntDensity","WetWeight","DryWeight")]) # 660 obs only??
+summary(table[!is.na(table$WetWeight),c("IntDensity","WetWeight","DryWeight")])
+# dim(table[!is.na(table$WetWeight),c("IntDensity","WetWeight","DryWeight")])
+
+summary(table[,c("IntDensity","Density")])
+dim(table)
 
 ### Need to figure out how to treat the avrious quantitative data: Occurrence/Count/Density/IntDensity/WetWeight/DryWeight...
 # GO HERE FOR DESCRIPTION OF FIELDS: https://www.bco-dmo.org/dataset/526852 
+### AND CHECK SI #2 of the original paper here: https://onlinelibrary.wiley.com/doi/abs/10.1111/geb.12169 
+
 # - mesh size is in mm
 # - count : Raw counts from respective survey (dimensionless)
-# - density : unknown (avoid using)
+# - density : abundance, ind/m3 --> TO KEEP
 # - intdensity: Depth integrated density (abundance, ind/m2) 
 # - biovolume: Displacement volume of sample (mm/m3)
 # - wet weight: Sample wet weight (g/m3) - biomass
@@ -267,10 +286,10 @@ str(table)
 # https://www.ices.dk/sites/pub/CM%20Doccuments/CM-2014/Theme%20Session%20A%20contributions/A4414.pdf
 #  a  total  of  91,765  quantitative  numerical  abundance  data  of  gelatinous taxa in the upper 200 m between the years 1934 and 2011 were extracted from the database and converted into carbon biomass (mg C m-3) using species, family or group-specific length–mass or mass–mass linear and logistic regression equations (Lucas et al. 2011).
 # Try to identify those 90,000 abudn data
-dim(table[!is.na(table$Density),]) # 257'600
-dim(table[!is.na(table$IntDensity),]) # 76'146
-dim(table[!is.na(table$Depth) & table$Depth <= 200,]) # 45'562
-dim(table[!is.na(table$MaxDepth) & table$MaxDepth <= 200,]) # 102'198
+dim(table[!is.na(table$Density),]) # 257600/429462 --> 60% have abund data
+dim(table[!is.na(table$IntDensity),]) # 76146/429462
+dim(table[!is.na(table$Depth) & table$Depth <= 200,]) # 45562
+dim(table[!is.na(table$MaxDepth) & table$MaxDepth <= 200,]) # 102198
 
 ### Based on this information, and considering we have to do our own conversion to biomass for AtlantECO WP2 (MAREDAT update), just keep 
 ### occurrence values --> for ZOObase update and integrated density (abundance)
@@ -287,12 +306,12 @@ summary(factor(table$Occurrence))
 # OK, keep all for P-A data
 
 # Check intdensity status
-summary(table$IntDensity) # 81% of the data are NAs
-dim(table %>% drop_na(IntDensity))
-# Those non values should have depth valeus though
-dim(table[!is.na(table$IntDensity),c("decimalLongitude","decimalLatitude","Year","Month","Day","Depth","MinDepth","MaxDepth")])
-# 63328 rows (~19% of data)
-summary(table[!is.na(table$IntDensity),c("decimalLongitude","decimalLatitude","Year","Month","Day","Depth","MinDepth","MaxDepth")])
+summary(table$Density) # 81% of the data are NAs
+dim(table %>% drop_na(Density))
+# Those non values should have depth values though
+dim(table[!is.na(table$Density),c("decimalLongitude","decimalLatitude","Year","Month","Day","Depth","MinDepth","MaxDepth")])
+# 242884 rows (~56% of data)
+summary(table[!is.na(table$Density),c("decimalLongitude","decimalLatitude","Year","Month","Day","Depth","MinDepth","MaxDepth")])
 
 ### And check the completion of the taxonomic id
 unique(table$ScientificName)
@@ -301,17 +320,17 @@ dim(table[is.na(table$ScientificName),]) # 114257 rows though == 27% of data
 head(table[is.na(table$ScientificName),c("Phylum","Class","Order","Family")])
 
 ### For P/A data --> discard all the stuff that have no value in ScientificName
-### For IntDensity data (abundance) data --> inform at leats one level (Family/Order/Class )
+### For Density data (abundance) data --> inform at least one level (Family/Order/Class )
 
 occ.data <- table[,c(1:28,32,37:38)] # keep IntBiovolume #32
 occ.data <- occ.data %>% drop_na(ScientificName)
 dim(occ.data) # 299'018
 unique(occ.data$ScientificName)
 
-abund.data <- table[!is.na(table$IntDensity),]
-dim(abund.data) # 63'328
-# How many points with missing ScientificName
-dim(abund.data[is.na(abund.data$ScientificName),]) # 44290 == 69% of data
+abund.data <- table[!is.na(table$Density),]
+dim(abund.data) # 242884
+# How many points with missing ScientificName?
+dim(abund.data[is.na(abund.data$ScientificName),]) # 86666 == 86666/242884 35% of data
 # Need to give those a Family/Order/Class
 
 # Progressively add Family, if, not add Order and so on
@@ -323,17 +342,21 @@ abund.data$Phylum <- na_if(x = abund.data$Phylum, y = "")
 # Family
 abund.data[is.na(abund.data$ScientificName),"ScientificName"] <- abund.data[is.na(abund.data$ScientificName),"Family"]
 unique(abund.data$ScientificName)
-dim(abund.data[is.na(abund.data$ScientificName),]) # 35617/63328 == 56% of data
+dim(abund.data[is.na(abund.data$ScientificName),]) # 71719/242884 == 29% of data
 # Order
 abund.data[is.na(abund.data$ScientificName),"ScientificName"] <- abund.data[is.na(abund.data$ScientificName),"Order"]
-dim(abund.data[is.na(abund.data$ScientificName),]) # 18275/63328 == 29% of the data
+dim(abund.data[is.na(abund.data$ScientificName),]) # 38750/242884 == 16% of the data
 # Class
 abund.data[is.na(abund.data$ScientificName),"ScientificName"] <- abund.data[is.na(abund.data$ScientificName),"Class"]
-dim(abund.data[is.na(abund.data$ScientificName),]) # 7439/63328 == 12% of the data
+dim(abund.data[is.na(abund.data$ScientificName),]) # 17145/242884 == 7% of the data
 # Phylum
 abund.data[is.na(abund.data$ScientificName),"ScientificName"] <- abund.data[is.na(abund.data$ScientificName),"Phylum"]
 unique(abund.data$ScientificName)
-# OK, no more NAs
+# Some NAs left:
+dim(abund.data[is.na(abund.data$ScientificName),]) # 4801
+unique(abund.data[is.na(abund.data$ScientificName),'Phylum']) # 4801 of...nothing --> remove
+abund.data <- abund.data[!is.na(abund.data$ScientificName),]
+dim(abund.data) # 238083 
 
 ### Re-format to AtlantECO template ! 
 
@@ -396,34 +419,24 @@ ab.data.rfrmt <- data.frame(ProjectID = "AtlantECO_H2020_GA#210591007", ProjectW
                 WoRMS_ID = "To_add_at_the_end", TaxonRank = NA, 
                 Kingdom = "Animalia", Phylum = abund.data$Phylum, Class = abund.data$Class, Order = abund.data$Order,
                 Family = abund.data$Family, Genus = abund.data$Genus, Species = NA, Subspecies = NA, LifeForm = NA, AssocTaxa = NA,
-                MeasurementID = "To_define", MeasurementType = "Depth integrated abundance", MeasurementTypeID = "To_define", MeasurementValue = abund.data$IntDensity,
-                MeasurementUnit = "ind/m2", MeasurementAcurracy = NA, MeasurementValueID = "To_define", Biomass_mgCm3 = NA, BiomassConvFactor = NA,
+                MeasurementID = "To_define", MeasurementType = "Depth integrated abundance", MeasurementTypeID = "To_define",
+                MeasurementValue = abund.data$Density,MeasurementUnit = "ind/m3", MeasurementAcurracy = NA,
+                MeasurementValueID = "To_define", Biomass_mgCm3 = NA, BiomassConvFactor = NA,
                 basisOfRecord = factor(paste(abund.data$Method, abund.data$study_type, sep = ";")),
                 SamplingProtocol = factor(paste(abund.data$Method,";",abund.data$study_type,"; NetOpening (m):",abund.data$NetOpening,"; NetMesh (mm):",abund.data$NetMesh, sep = "")),
                 SampleAmount = abund.data$IntBiovolume, SampleAmountUnit = "Integrated displacement volume of sample (mm/m2)", SampleEffort = NA,
                 DeterminedBy = abund.data$owner, DeterminedDate = NA, Note = NA, Flag = NA 
 ) # eo ddf
 ### Check before saving
-dim(ab.data.rfrmt) # 63'328            70
+dim(ab.data.rfrmt) # 238083           70
 str(ab.data.rfrmt)
 summary(ab.data.rfrmt)
 ab.data.rfrmt[1:1000,]
 
 ### Save
-save(ab.data.rfrmt, file = "JeDi_Lucas&al._2014_abundances_reformated_18_06_2021.Rdata")
+save(ab.data.rfrmt, file = "JeDi_Lucas&al._2014_abundances_reformated_03_12_2021.Rdata")
   
 ### Good. Now go to Script#1.5 to provide AphiaIDs from WoRMS
-
-###
-colnames(jedi)
-summary(factor(jedi[,c('Order')]))
-dim(jedi[jedi$Order == "Salpida",]) # 18'015 
-salps <- jedi[jedi$Order == "Salpida",]
-dim(salps)
-head(salps)
-
-i <- which(rowSums(is.na(salps)) == ncol(salps)) # should return 'integer(0)'
-
 
 ### ----------------------------------------------------------------------------------------------------------------------------
 ### ----------------------------------------------------------------------------------------------------------------------------

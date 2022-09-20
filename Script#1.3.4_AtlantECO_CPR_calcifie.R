@@ -10,7 +10,6 @@
 
 ### Latest update: 25/10/2021
 
-library("marmap")
 library("tidyverse")
 library("reshape2")
 library("RColorBrewer")
@@ -18,6 +17,7 @@ library("geosphere")
 library("parallel")
 library("lubridate")
 library("viridis")
+library("marmap")
 library("worms")
 
 world <- map_data("world")  # for maps
@@ -33,6 +33,15 @@ dim(cpr) # 250'620     10
 str(cpr)
 head(cpr)
 summary(cpr)
+
+# unique(cpr$Thecosomata_NAtlantic)
+ggplot(cpr, aes(x = log1p(Thecosomata_NAtlantic))) + geom_histogram(binwidth = 1, colour="black", fill="white") +
+    xlab("Euthecosomata counts (log(x+1))") + ylab("Count - raw data - N Atlantic")
+
+ggplot(cpr, aes(x = log1p(Thecosomata_Pacific))) + geom_histogram(binwidth = 1, colour="black", fill="white") +
+    xlab("Euthecosomata counts (log(x+1))") + ylab("Count - raw data - N Pacific")
+
+
 # cpr[50620:50640,c("Thecosomata_Pacific","Thecosomata_NAtlantic")]
 # Quickly melt to have both 
 m.cpr <- melt(cpr, id.vars = c("Sample_Id","decimalLatitude","decimalLongitude","Midpoint_Date_Local","Year","Month"))
@@ -176,8 +185,9 @@ unique(ddf$WoRMS_status) # good
 ### Counts were ACTUALLY in 3/m3, not #/m3 (pers. comm. David Johns). Need to divide by 3
 # colnames(ddf)
 summary(ddf$MeasurementValue) ; unique(ddf$MeasurementValue)
-ddf$MeasurementValue <- (ddf$MeasurementValue)/3 ; summary(ddf$MeasurementValue)
-unique(ddf$MeasurementValue)
+ddf$MeasurementValue <- (ddf$MeasurementValue)/3
+# summary(ddf$MeasurementValue)
+# unique(ddf$MeasurementValue)
 
 
 ### Last, make a map of sampling effort in space and then maybe a Hövmoller plot
@@ -212,6 +222,38 @@ write.table(ddf, file = "CPR_calcifiers_reformatted+WoRMScheck_25_10_21.txt", se
 
 # d <- get(load("CPR_calcifiers_reformatted+WoRMScheck_25_10_21.Rdata"))
 # unique(d$MeasurementValue)
+
+### 21/02/2022: Plot distrbution of count values per bins of 1 for Pteropoda data
+data <- get(load("CPR_calcifiers_reformatted+WoRMScheck_25_10_21.Rdata"))
+dim(data)
+unique(data$ScientificName)
+data <- data[data$ScientificName == "Euthecosomata",] # dim(data)
+
+ggplot(data, aes(x = log1p(MeasurementValue))) + geom_histogram(binwidth = 1, colour="black", fill="white") +
+    xlab("Euthecosomata counts (log(x+1))") + ylab("Count - raw data")
+### Clearly, zero inflated
+    
+### Compute monthly clims
+data$x <- round(data$decimalLongitude, .1)
+data$y <- round(data$decimalLatitude, .1)
+unique(data$x)
+unique(data$y)
+data$id <- factor(paste(data$x, data$y, data$Month, sep = "_"))
+# Derive monthly clims
+clims <- data.frame(data %>% group_by(id) %>% summarize(x = unique(x), y = unique(y), month = unique(Month), mean = mean(MeasurementValue) ))
+summary(clims)
+
+ggplot(clims, aes(x = log1p(mean))) + geom_histogram(binwidth = 1, colour="black", fill="white") +
+    xlab("Euthecosomata counts (log(x+1))") + ylab("Count - monthly climatologies") + facet_wrap(.~ factor(month), ncol = 4)
+
+### Facet of maps
+ggplot() + geom_polygon(aes(x = long, y = lat, group = group),
+        data = world[world$long <= 180,], fill = "grey85", colour = "black", size = 0.3) +
+    geom_tile(aes(x = x, y = y, fill = log10(N)), data = na.omit(spatial.effort)) + scale_fill_viridis(name = "N records\n(log10)", option = "B") + 
+    coord_quickmap() + ylab("Latitude (°N)") + xlab("Longitude (°W)") +
+    theme(panel.background = element_rect(fill = "white"),legend.key = element_rect(fill = "grey50"),
+        panel.grid.major = element_line(colour = "white",linetype = "dashed"), legend.position = "right") 
+
 
 ### ----------------------------------------------------------------------------------------------------------------------------
 ### ----------------------------------------------------------------------------------------------------------------------------

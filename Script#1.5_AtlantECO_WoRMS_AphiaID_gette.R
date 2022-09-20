@@ -1852,24 +1852,29 @@ save(ddf, file = "JeDi_Lucas&al._2014_occurrences_reformated+WoRMScheck_18_06_20
 setwd("/net/kryo/work/fabioben/AtlantECO/AtlantECO_BASE/Traditional/JeDI_jellyfish_database")
 
 ### Part A: Occurrences only (presence-absence)
-jedi <- get(load("JeDi_Lucas&al._2014_abundances_reformated_18_06_2021.Rdata"))
+jedi <- get(load("JeDi_Lucas&al._2014_abundances_reformated_03_12_2021.Rdata"))
 dim(jedi) ; head(jedi)
 # Check n spp
-length( unique(jedi$ScientificName) ) # 94 names
+length( unique(jedi$ScientificName) ) # 191 names
 unique(jedi$ScientificName) # Still ned to remove the:
 # - " sp"
 # - " spp."
 jedi$ScientificName <- str_replace_all(jedi$ScientificName, " spp.", "")
 jedi$ScientificName <- str_replace_all(jedi$ScientificName, " sp", "")
 jedi$ScientificName <- gsub(pattern = "\\.", replacement = "", x = jedi$ScientificName)
-length( unique(jedi$ScientificName) ) # 93 names
+length( unique(jedi$ScientificName) ) # 186 names
 
 # Do a first check with wormsbynames()
-# keys.worms <- wormsbynames( unique(jedi$ScientificName), marine_only = T)
+require("worms")
+keys.worms <- wormsbynames( unique(jedi$ScientificName), marine_only = F)
 
 ### Labels to manually correct otherwise no match in WoRMS
+# Aeginopsis laurenti                                  no match
+jedi[jedi$ScientificName == "Aeginopsis laurenti","ScientificName"] <- "Aeginopsis laurentii"
 # Fritillaridae                                        no match
 jedi[jedi$ScientificName == "Fritillaridae","ScientificName"] <- "Fritillariidae"
+# Liriope  tetraphylla                                 no match
+jedi[jedi$ScientificName == "Liriope  tetraphylla","ScientificName"] <- "Liriope tetraphylla"
 # Oikopleura vanhoeffeni                               no match
 jedi[jedi$ScientificName == "Oikopleura vanhoeffeni","ScientificName"] <- "Oikopleura (Vexillaria) vanhoeffeni"
 # Oikopleura parva                                     no match
@@ -1890,10 +1895,43 @@ jedi[jedi$ScientificName == "Muggiaea kochi","ScientificName"] <- "Muggiaea koch
 jedi[jedi$ScientificName == "Oikopleura longicauda","ScientificName"] <- "Oikopleura (Coecaria) longicauda"
 # Oikopleura labradoriensis                            no match
 jedi[jedi$ScientificName == "Oikopleura labradoriensis","ScientificName"] <- "Oikopleura (Vexillaria) labradoriensis"
+# Sarsia prolifer                                      no match
+jedi[jedi$ScientificName == "Sarsia prolifer","ScientificName"] <- "Codonium proliferum"
+# Steenstrupia natans                                  no match
+jedi[jedi$ScientificName == "Steenstrupia natans","ScientificName"] <- "Corymorpha nutans"
+# Euphysa auata                                        no match
+jedi[jedi$ScientificName == "Euphysa auata","ScientificName"] <- "Euphysa aurata"
+# Studiosarsia producta                                no match
+jedi[jedi$ScientificName == "Studiosarsia producta","ScientificName"] <- "Stauridiosarsia producta"
+# octopuncatata                                        no match
+jedi[jedi$ScientificName == "octopuncatata","ScientificName"] <- "Rathkea octopunctata"
+# Aequores vitrina                                     no match
+jedi[jedi$ScientificName == "Aequores vitrina","ScientificName"] <- "Aequorea vitrina"
+# Eutoninia indicans                                   no match
+jedi[jedi$ScientificName == "Eutoninia indicans","ScientificName"] <- "Eutonina indicans"
+# Tima bairdi                                          no match
+jedi[jedi$ScientificName == "Tima bairdi","ScientificName"] <- "Tima bairdii"
+# Eucheilota muclata                                   no match
+jedi[jedi$ScientificName == "Eucheilota muclata","ScientificName"] <- "Eucheilota maculata"
+# Tiaropsis multicarrata                               no match
+jedi[jedi$ScientificName == "Tiaropsis multicarrata","ScientificName"] <- "Tiaropsis multicirrata"
+# Muggia                                               no match
+jedi[jedi$ScientificName == "Muggia","ScientificName"] <- "Muggiaea"
+# Eudoxides mitra                                      no match
+jedi[jedi$ScientificName == "Eudoxides mitra","ScientificName"] <- "Eudoxoides mitra"
+# Eudoxidesiralis                                      no match
+jedi[jedi$ScientificName == "Eudoxidesiralis","ScientificName"] <- "Eudoxoides spiralis"
+# Amphycarion acaule                                   no match
+jedi[jedi$ScientificName == "Amphycarion acaule","ScientificName"] <- "Amphicaryon acaule"
+# Margelopsis hartlaubi                                no match
+jedi[jedi$ScientificName == "Margelopsis hartlaubi","ScientificName"] <- "Margelopsis hartlaubii"
+# Lasis zonaria                                        no match
+jedi[jedi$ScientificName == "Lasis zonaria","ScientificName"] <- "Soestia zonaria"
+
 
 ### Do a re-check
-length( unique(jedi$ScientificName) ) # 93
-keys.worms <- wormsbynames( unique(jedi$ScientificName), marine_only = T)
+length( unique(jedi$ScientificName) ) # 178
+keys.worms <- wormsbynames( unique(jedi$ScientificName), marine_only = F)
 keys.worms$ScientificName <- unique(jedi$ScientificName)
 
 # Add WoRMS_status field
@@ -1950,16 +1988,38 @@ res <- mclapply( unique(jedi$ScientificName), function(s) {
 ) # eo mclapply - s in taxa_names
 # Rbind
 ddf <- bind_rows(res)
-dim(ddf) # 63'328   71
+dim(ddf) # 238083   71
 rm(res) ; gc()
 ddf[6000:6100,]
-#unique(ddf$Species) ; unique(ddf$WoRMS_ID)
-#unique(ddf$WoRMS_status)
-#length(unique(ddf$Species)) ; length(unique(ddf$ScientificName)) # 
-#unique(ddf$TaxonRank)
+unique(ddf$Species) ; unique(ddf$WoRMS_ID)
+unique(ddf$WoRMS_status)
+length(unique(ddf$Species)) ; length(unique(ddf$ScientificName)) # 
+unique(ddf$TaxonRank)
 
 ### Save
-save(ddf, file = "JeDi_Lucas&al._2014_abundances_reformated+WoRMScheck_22_06_2021.Rdata")
+save(ddf, file = "JeDi_Lucas&al._2014_abundances_reformated+WoRMScheck_03_12_2021.Rdata")
+
+### Last, make a map of sampling effort in space and then maybe a Hövmoller plot
+d.effort <- ddf
+d.effort$x_1d <- round(d.effort$decimalLongitude)
+d.effort$y_1d <- round(d.effort$decimalLatitude)
+d.effort$cell_id <- factor(paste(d.effort$x_1d, d.effort$y_1d, sep = "_"))
+require("dplyr")
+detach("package:worms", unload = T)
+detach("package:marmap", unload = T)
+detach("package:reshape2", unload = T)
+detach("package:plyr", unload = T)
+
+spatial.effort <- data.frame(d.effort %>% group_by(cell_id) %>% summarize(x = unique(x_1d), y = unique(y_1d), N = n() ))
+dim(spatial.effort) ; summary(spatial.effort)
+
+ggplot() + geom_polygon(aes(x = long, y = lat, group = group),
+        data = world[world$long <= 180,], fill = "grey85", colour = "black", size = 0.3) +
+    geom_tile(aes(x = x, y = y, fill = log10(N)), data = na.omit(spatial.effort)) + scale_fill_viridis(name = "N records\n(log10)", option = "B") + 
+    coord_quickmap() + ylab("Latitude (°N)") + xlab("Longitude (°W)") +
+    theme(panel.background = element_rect(fill = "white"),legend.key = element_rect(fill = "grey50"),
+        panel.grid.major = element_line(colour = "white",linetype = "dashed"), legend.position = "right") 
+
 
 
 ### ----------------------------------------------------------------------------------------------------------------------------

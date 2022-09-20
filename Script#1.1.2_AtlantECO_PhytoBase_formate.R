@@ -47,11 +47,18 @@ unique(phy$collectionCode_obis)
 unique(phy$resname_obis)
 unique(phy$resourceID_obis) # to be used with datasetKey_gbif
 
+# unique(phy[phy$resname_obis == "Continuous Plankton Recorder (Phytoplankton)","institutionCode"])
+data.frame(phy %>% group_by(resname_obis) %>% summarize(n = n()) )
+data.frame(phy[is.na(phy$institutionCode),] %>% group_by(resname_obis) %>% summarize(n = n()) )
+unique(phy[!is.na(phy$institutionCode),"resname_obis"])
+unique(phy[!is.na(phy$resourceID_obis),"institutionCode"])
+
+
 ### Important for tracing original datasets: where's the dataset key for non GBIF data?
 head( phy[is.na(phy$datasetKey_gbif),] )
 # The parameters “datasetKey_gbif” and “resourceID_obis” are keys to access metadata of original datasets in GBIF and OBIS via API, including information on sampling methods
 unique(phy[is.na(phy$datasetKey_gbif),"resourceID_obis"])
-unique(phy[is.na(phy$resourceID_obis),"datasetKey_gbif"])
+unique(phy[!is.na(phy$resourceID_obis),"datasetKey_gbif"])
 # Are there some observtaions that have both? 
 #summary( phy[!is.na(phy$datasetKey_gbif),"resourceID_obis"] )
 #head( phy[!is.na(phy$datasetKey_gbif) & !is.na(phy$resourceID_obis),] )
